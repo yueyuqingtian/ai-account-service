@@ -7,6 +7,8 @@ RUN mvn -s maven-settings.xml -DskipTests package
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /workspace/target/gpt-plus-service-*.jar /app/app.jar
+COPY backend/render-start.sh /app/render-start.sh
+RUN chmod +x /app/render-start.sh
 ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["/app/render-start.sh"]
