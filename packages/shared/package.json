@@ -1,0 +1,6 @@
+{
+  "name": "@gpt-plus/shared",
+  "version": "5.0.0",
+  "type": "module",
+  "main": "src/index.ts"
+}

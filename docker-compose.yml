@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: gpt_plus_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./sql/init_schema.sql:/docker-entrypoint-initdb.d/01-init_schema.sql:ro
+
+  backend:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      POSTGRES_JDBC_URL: jdbc:postgresql://postgres:5432/gpt_plus_service
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: postgres
+      GPT_PLUS_TOKEN_SECRET: change-me-in-production
+      GPT_PLUS_INVENTORY_CRYPTO_KEY: 0123456789abcdef
+    ports:
+      - "8080:8080"
+
+volumes:
+  pg-data:

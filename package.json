@@ -1,0 +1,17 @@
+{
+  "name": "gpt-plus-service-monorepo",
+  "private": true,
+  "version": "5.0.0",
+  "workspaces": [
+    "apps/web",
+    "apps/admin",
+    "packages/shared"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:admin": "npm --workspace apps/admin run dev",
+    "build": "npm --workspaces run build",
+    "build:web": "npm --workspace apps/web run build",
+    "build:admin": "npm --workspace apps/admin run build"
+  }
+}

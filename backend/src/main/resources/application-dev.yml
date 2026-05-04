@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: ${GPT_PLUS_DATASOURCE_URL:jdbc:h2:file:./data/gpt_plus_service;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;WRITE_DELAY=0}
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+
+logging:
+  level:
+    com.company.gptplus: info
