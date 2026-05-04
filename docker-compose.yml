@@ -22,8 +22,35 @@ services:
       POSTGRES_PASSWORD: postgres
       GPT_PLUS_TOKEN_SECRET: change-me-in-production
       GPT_PLUS_INVENTORY_CRYPTO_KEY: 0123456789abcdef
+      GPT_PLUS_ADMIN_USERNAME: ${GPT_PLUS_ADMIN_USERNAME:-admin}
+      GPT_PLUS_ADMIN_PASSWORD: ${GPT_PLUS_ADMIN_PASSWORD:-ChangeMe@123456}
+      GPT_PLUS_CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:5174
     ports:
       - "8080:8080"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        APP_NAME: web
+        VITE_API_BASE_URL: http://localhost:8080
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+  admin:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        APP_NAME: admin
+        VITE_API_BASE_URL: http://localhost:8080
+    depends_on:
+      - backend
+    ports:
+      - "5174:80"
 
 volumes:
   pg-data:

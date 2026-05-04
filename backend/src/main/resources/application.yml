@@ -25,6 +25,10 @@ gpt-plus:
     dir: ${GPT_PLUS_UPLOAD_DIR:uploads}
   cors:
     allowed-origins: ${GPT_PLUS_CORS_ALLOWED_ORIGINS:*}
+  bootstrap:
+    admin:
+      username: ${GPT_PLUS_ADMIN_USERNAME:}
+      password: ${GPT_PLUS_ADMIN_PASSWORD:}
   payment:
     mock-enabled: true
     alipay:
