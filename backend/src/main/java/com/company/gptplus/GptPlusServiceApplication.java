@@ -23,7 +23,10 @@ public class GptPlusServiceApplication {
                 System.getenv("DATABASE_URL")
         );
         if (databaseUrl == null) {
-            System.out.println("No Render PostgreSQL environment variable found; using configured datasource URL.");
+            if ("prod".equals(System.getenv("SPRING_PROFILES_ACTIVE"))) {
+                throw new IllegalStateException("Production profile requires one of SPRING_DATASOURCE_URL, POSTGRES_JDBC_URL, or DATABASE_URL to be configured.");
+            }
+            System.out.println("No PostgreSQL environment variable found; using configured datasource URL.");
             return;
         }
         if (databaseUrl.startsWith("jdbc:")) {
