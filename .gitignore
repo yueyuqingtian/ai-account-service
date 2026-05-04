@@ -5,3 +5,19 @@ dist/
 .vscode/
 .env
 *.log
+
+# Build artifacts
+*.js.map
+*.tsbuildinfo
+*.css.map
+
+# Database files
+*.db
+*.trace.db
+
+# Uploads
+backend/uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
