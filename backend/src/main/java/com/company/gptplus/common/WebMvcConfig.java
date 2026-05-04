@@ -6,16 +6,25 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
     private final String uploadDir;
     private final String allowedOrigins;
+    private final String webOrigin;
+    private final String adminOrigin;
 
     public WebMvcConfig(@Value("${gpt-plus.upload.dir:uploads}") String uploadDir,
-                        @Value("${gpt-plus.cors.allowed-origins:*}") String allowedOrigins) {
+                        @Value("${gpt-plus.cors.allowed-origins:*}") String allowedOrigins,
+                        @Value("${gpt-plus.cors.web-origin:}") String webOrigin,
+                        @Value("${gpt-plus.cors.admin-origin:}") String adminOrigin) {
         this.uploadDir = uploadDir;
         this.allowedOrigins = allowedOrigins;
+        this.webOrigin = webOrigin;
+        this.adminOrigin = adminOrigin;
     }
 
     @Override
@@ -34,11 +43,28 @@ public class WebMvcConfig implements WebMvcConfigurer {
     }
 
     private String[] parseAllowedOrigins() {
-        return allowedOrigins == null || allowedOrigins.isBlank()
-                ? new String[]{"*"}
-                : java.util.Arrays.stream(allowedOrigins.split(","))
+        Set<String> origins = new LinkedHashSet<>();
+        addOrigins(origins, allowedOrigins);
+        addOrigins(origins, webOrigin);
+        addOrigins(origins, adminOrigin);
+        return origins.isEmpty() ? new String[]{"*"} : origins.toArray(String[]::new);
+    }
+
+    private void addOrigins(Set<String> origins, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        Arrays.stream(value.split(","))
                 .map(String::trim)
-                .filter(value -> !value.isBlank())
-                .toArray(String[]::new);
+                .filter(origin -> !origin.isBlank())
+                .map(this::normalizeOrigin)
+                .forEach(origins::add);
+    }
+
+    private String normalizeOrigin(String origin) {
+        if ("*".equals(origin) || origin.startsWith("http://") || origin.startsWith("https://")) {
+            return origin;
+        }
+        return "https://" + origin;
     }
 }

@@ -1,0 +1,72 @@
+services:
+  - type: web
+    name: gpt-plus-backend
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gpt-plus-db
+          property: connectionString
+      - key: GPT_PLUS_TOKEN_SECRET
+        generateValue: true
+      - key: GPT_PLUS_INVENTORY_CRYPTO_KEY
+        generateValue: true
+      - key: GPT_PLUS_ADMIN_USERNAME
+        value: admin
+      - key: GPT_PLUS_ADMIN_PASSWORD
+        sync: false
+      - key: GPT_PLUS_CORS_WEB_ORIGIN
+        fromService:
+          type: web
+          name: gpt-plus-web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: GPT_PLUS_CORS_ADMIN_ORIGIN
+        fromService:
+          type: web
+          name: gpt-plus-admin
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: gpt-plus-web
+    runtime: static
+    buildCommand: npm ci && npm run build:web
+    staticPublishPath: apps/web/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: gpt-plus-backend
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+  - type: web
+    name: gpt-plus-admin
+    runtime: static
+    buildCommand: npm ci && npm run build:admin
+    staticPublishPath: apps/admin/dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: gpt-plus-backend
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+databases:
+  - name: gpt-plus-db
+    plan: basic-256mb
+    databaseName: gpt_plus_service
+    user: gpt_plus_service
+    postgresMajorVersion: "17"
