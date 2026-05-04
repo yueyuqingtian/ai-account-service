@@ -17,21 +17,30 @@ public class GptPlusServiceApplication {
     }
 
     private static void configureRenderPostgresUrl() {
-        if (System.getenv("SPRING_DATASOURCE_URL") != null || System.getenv("POSTGRES_JDBC_URL") != null) {
+        String databaseUrl = firstNonBlank(
+                System.getenv("SPRING_DATASOURCE_URL"),
+                System.getenv("POSTGRES_JDBC_URL"),
+                System.getenv("DATABASE_URL")
+        );
+        if (databaseUrl == null) {
+            System.out.println("No Render PostgreSQL environment variable found; using configured datasource URL.");
             return;
         }
-        String databaseUrl = System.getenv("DATABASE_URL");
-        if (databaseUrl == null || databaseUrl.isBlank() || databaseUrl.startsWith("jdbc:")) {
+        if (databaseUrl.startsWith("jdbc:")) {
+            System.setProperty("spring.datasource.url", databaseUrl);
+            System.out.println("Using JDBC datasource URL from environment.");
             return;
         }
         URI uri = URI.create(databaseUrl);
         if (!"postgresql".equals(uri.getScheme()) && !"postgres".equals(uri.getScheme())) {
+            System.out.println("Unsupported datasource URL scheme from environment: " + uri.getScheme());
             return;
         }
         String port = uri.getPort() < 0 ? "" : ":" + uri.getPort();
         String path = uri.getRawPath() == null ? "" : uri.getRawPath();
         String query = uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery();
         System.setProperty("spring.datasource.url", "jdbc:postgresql://" + uri.getHost() + port + path + query);
+        System.out.println("Converted Render PostgreSQL URL to JDBC datasource URL.");
 
         String userInfo = uri.getRawUserInfo();
         if (userInfo != null && !userInfo.isBlank()) {
@@ -43,6 +52,15 @@ public class GptPlusServiceApplication {
                 System.setProperty("spring.datasource.password", decode(parts[1]));
             }
         }
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private static String decode(String value) {
