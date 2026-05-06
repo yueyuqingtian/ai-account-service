@@ -88,21 +88,24 @@ public class AdminInventoryController {
                 continue;
             }
             try {
+                Integer exists = jdbcTemplate.queryForObject("""
+                        select count(*) from inventory_account
+                        where product_id = ? and lower(resource_account) = lower(?)
+                        """, Integer.class, request.productId(), account);
+                if (exists != null && exists > 0) {
+                    errors.add("第 " + (i + 1) + " 行导入失败：同一商品下账号已存在");
+                    continue;
+                }
                 String passwordCipher = cryptoService.encrypt(password);
                 if (passwordCipher.length() > 512) {
                     errors.add("第 " + (i + 1) + " 行密码过长");
                     continue;
                 }
-                int inserted = jdbcTemplate.update("""
+                jdbcTemplate.update("""
                         insert into inventory_account(batch_no, product_id, resource_account, resource_password_cipher, status, remark)
                         values (?, ?, ?, ?, 'AVAILABLE', ?)
-                        on conflict (product_id, resource_account) do nothing
                         """, batchNo, request.productId(), account, passwordCipher, remark);
-                if (inserted == 1) {
-                    success++;
-                } else {
-                    errors.add("第 " + (i + 1) + " 行导入失败：同一商品下账号已存在");
-                }
+                success++;
             } catch (Exception ex) {
                 errors.add("第 " + (i + 1) + " 行导入失败，请检查账号、密码和备注格式");
             }
