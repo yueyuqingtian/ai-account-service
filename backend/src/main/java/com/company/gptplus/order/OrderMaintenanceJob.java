@@ -21,9 +21,12 @@ public class OrderMaintenanceJob {
         this.unpaidTimeoutMinutes = unpaidTimeoutMinutes;
     }
 
-    @Scheduled(fixedDelay = 60_000)
+    @Scheduled(initialDelay = 120_000, fixedDelay = 60_000)
     @Transactional
     public void closeExpiredUnpaidOrders() {
+        if (!tableExists("order_info") || !tableExists("inventory_account")) {
+            return;
+        }
         Timestamp threshold = Timestamp.valueOf(LocalDateTime.now().minusMinutes(unpaidTimeoutMinutes));
         List<String> expiredOrderNos = jdbcTemplate.queryForList("""
                 select order_no from order_info
@@ -43,5 +46,13 @@ public class OrderMaintenanceJob {
                     where assigned_order_no=? and status='RESERVED'
                     """, orderNo);
         }
+    }
+
+    private boolean tableExists(String tableName) {
+        Integer count = jdbcTemplate.queryForObject("""
+                select count(*) from information_schema.tables
+                where table_schema = current_schema() and table_name = ?
+                """, Integer.class, tableName);
+        return count != null && count > 0;
     }
 }

@@ -1,9 +1,7 @@
 package com.company.gptplus.common;
 
-import org.springframework.boot.CommandLineRunner;
+import jakarta.annotation.PostConstruct;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -13,22 +11,26 @@ import java.nio.charset.StandardCharsets;
 
 @Component
 @Profile("prod")
-@Order(Ordered.HIGHEST_PRECEDENCE)
-public class PostgresSchemaInitializer implements CommandLineRunner {
+public class PostgresSchemaInitializer {
     private final JdbcTemplate jdbcTemplate;
 
     public PostgresSchemaInitializer(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @Override
-    public void run(String... args) throws Exception {
+    @PostConstruct
+    public void run() throws Exception {
         ClassPathResource resource = new ClassPathResource("schema-postgresql.sql");
         String schema = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
         for (String statement : schema.split(";")) {
             String sql = statement.trim();
             if (!sql.isBlank()) {
-                jdbcTemplate.execute(sql);
+                try {
+                    jdbcTemplate.execute(sql);
+                } catch (Exception ex) {
+                    System.err.println("PostgreSQL schema initialization failed at SQL: " + sql);
+                    throw ex;
+                }
             }
         }
         System.out.println("PostgreSQL schema initialization completed.");
