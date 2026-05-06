@@ -32,17 +32,39 @@ public class AdminInventoryController {
                                                                @RequestParam(required = false) Long productId) {
         authSupport.requireAdmin(servletRequest);
         int offset = (Math.max(pageNo, 1) - 1) * pageSize;
-        Long total = jdbcTemplate.queryForObject("""
-                select count(*) from inventory_account
-                where (? is null or product_id = ?) and (? = '' or status = ?)
-                """, Long.class, productId, productId, status, status);
+        List<Object> countParams = new ArrayList<>();
+        String countWhere = buildInventoryWhere("", productId, status, countParams);
+        Long total = jdbcTemplate.queryForObject(
+                "select count(*) from inventory_account" + countWhere,
+                Long.class,
+                countParams.toArray()
+        );
+
+        List<Object> queryParams = new ArrayList<>();
+        String queryWhere = buildInventoryWhere("i.", productId, status, queryParams);
+        queryParams.add(pageSize);
+        queryParams.add(offset);
         List<Map<String, Object>> records = jdbcTemplate.queryForList("""
                 select i.*, p.name as product_name from inventory_account i left join product p on p.id = i.product_id
-                where (? is null or i.product_id = ?) and (? = '' or i.status = ?)
+                """ + queryWhere + """
+
                 order by i.id desc limit ? offset ?
-                """, productId, productId, status, status, pageSize, offset);
+                """, queryParams.toArray());
         records.forEach(row -> row.put("resource_password_cipher", "******"));
         return ApiResponse.ok(new PageResponse<>(pageNo, pageSize, total == null ? 0 : total, records));
+    }
+
+    private String buildInventoryWhere(String alias, Long productId, String status, List<Object> params) {
+        StringBuilder where = new StringBuilder(" where 1=1");
+        if (productId != null) {
+            where.append(" and ").append(alias).append("product_id = ?");
+            params.add(productId);
+        }
+        if (status != null && !status.isBlank()) {
+            where.append(" and ").append(alias).append("status = ?");
+            params.add(status);
+        }
+        return where.toString();
     }
 
     @PostMapping("/import")
