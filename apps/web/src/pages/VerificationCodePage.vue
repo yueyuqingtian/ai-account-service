@@ -3,10 +3,10 @@
     <div class="panel query-panel">
       <span class="eyebrow">OpenAI 验证码</span>
       <h1>查询登录验证码</h1>
-      <p class="muted">输入已兑换账号邮箱和账号密码，系统会校验归属后查询最近验证码。</p>
+      <p class="muted">输入已兑换账号邮箱和领取使用的 CDKey，系统会校验归属后查询最近验证码。</p>
       <div class="form">
         <input v-model.trim="accountEmail" placeholder="已购买账号邮箱" />
-        <input v-model="accountPassword" type="password" placeholder="已购买账号密码" />
+        <input v-model.trim="cdkCode" placeholder="领取使用的 CDKey" />
         <button :disabled="loading" @click="queryCode">{{ loading ? '查询中...' : '查询验证码' }}</button>
       </div>
       <p v-if="message" class="muted">{{ message }}</p>
@@ -15,6 +15,7 @@
     <div class="notice-card">
       <strong>查询规则</strong>
       <span>仅支持查询当前用户已兑换账号</span>
+      <span>账号邮箱必须与领取使用的 CDKey 匹配</span>
       <span>匹配邮件收件人、转发头和正文账号</span>
       <span>默认查找最近 30 分钟 6 位数字验证码</span>
     </div>
@@ -23,6 +24,7 @@
       <span class="status">查询成功</span>
       <h2>{{ result.code }}</h2>
       <p>账号：{{ result.accountEmail }}</p>
+      <p>CDKey：{{ result.cdkCode }}</p>
       <p>来源邮箱：{{ result.sourceMailbox }}</p>
       <p>邮件主题：{{ result.subject }}</p>
       <p>接收时间：{{ result.receivedAt }}</p>
@@ -39,7 +41,7 @@ import { useAuthStore } from '../stores/auth'
 const auth = useAuthStore()
 const router = useRouter()
 const accountEmail = ref('')
-const accountPassword = ref('')
+const cdkCode = ref('')
 const loading = ref(false)
 const message = ref('')
 const result = ref<any>(null)
@@ -55,7 +57,7 @@ async function queryCode() {
   try {
     const res: any = await api.post('/api/verification-code/query', {
       accountEmail: accountEmail.value,
-      accountPassword: accountPassword.value
+      cdkCode: cdkCode.value
     })
     result.value = res.data
   } catch (e: any) {

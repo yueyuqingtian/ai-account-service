@@ -73,9 +73,9 @@ public class RedeemController {
         }
         String redeemNo = Ids.redeemNo();
         jdbcTemplate.update("""
-                insert into redeem_record(redeem_no, user_id, cdk_id, cdk_code, product_id, inventory_id, result, client_ip)
-                values (?, ?, ?, ?, ?, ?, 'SUCCESS', ?)
-                """, redeemNo, user.id(), cdkey.get("id"), cdkCode, cdkey.get("product_id"), inventory.get("id"), clientIp);
+                insert into redeem_record(redeem_no, user_id, cdk_id, cdk_code, product_id, inventory_id, resource_account, result, client_ip)
+                values (?, ?, ?, ?, ?, ?, ?, 'SUCCESS', ?)
+                """, redeemNo, user.id(), cdkey.get("id"), cdkCode, cdkey.get("product_id"), inventory.get("id"), inventory.get("resource_account"), clientIp);
         markOrderDeliveredIfDone(String.valueOf(cdkey.get("order_no")));
         return Map.of(
                 "redeemNo", redeemNo,
