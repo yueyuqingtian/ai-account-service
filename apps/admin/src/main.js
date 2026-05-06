@@ -11,7 +11,7 @@ import PaymentConfigPage from './pages/PaymentConfigPage.vue';
 import EmailConfigPage from './pages/EmailConfigPage.vue';
 import './style.css';
 const router = createRouter({
-    history: createWebHistory(),
+    history: createWebHistory(import.meta.env.BASE_URL),
     routes: [
         { path: '/login', component: LoginPage },
         { path: '/', component: DashboardPage },

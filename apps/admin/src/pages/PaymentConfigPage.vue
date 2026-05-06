@@ -96,19 +96,32 @@ async function save() {
 async function uploadQr(event: Event, channel: 'alipay' | 'wechat') {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
-  const formData = new FormData()
-  formData.append('file', file)
   try {
-    const res: any = await api.post('/admin/uploads/image', formData)
-    if (channel === 'alipay') form.alipayQrUrl = res.data.url
-    else form.wechatQrUrl = res.data.url
+    if (!file.type.startsWith('image/')) {
+      throw new Error('请上传图片文件')
+    }
+    if (file.size > 1024 * 1024) {
+      throw new Error('收款码图片不能超过 1MB')
+    }
+    const dataUrl = await readAsDataUrl(file)
+    if (channel === 'alipay') form.alipayQrUrl = dataUrl
+    else form.wechatQrUrl = dataUrl
     await save()
-    message.value = '收款码已上传'
+    message.value = '收款码已保存'
   } catch (e: any) {
     message.value = e.message
   } finally {
     ;(event.target as HTMLInputElement).value = ''
   }
+}
+
+function readAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('图片读取失败'))
+    reader.readAsDataURL(file)
+  })
 }
 
 onMounted(load)

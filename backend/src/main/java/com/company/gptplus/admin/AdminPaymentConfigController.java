@@ -2,6 +2,7 @@ package com.company.gptplus.admin;
 
 import com.company.gptplus.common.ApiResponse;
 import com.company.gptplus.common.AuthSupport;
+import com.company.gptplus.common.BizException;
 import com.company.gptplus.common.SystemConfigService;
 import com.company.gptplus.payment.PaymentGatewayService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,13 +39,13 @@ public class AdminPaymentConfigController {
         putPlain("payment.alipay.app_id", body.alipayAppId());
         putPlain("payment.alipay.merchant_id", body.alipayMerchantId());
         putPlain("payment.alipay.gateway", body.alipayGateway());
-        putPlain("payment.alipay.qr_url", body.alipayQrUrl());
+        putPlain("payment.alipay.qr_url", normalizeQrValue(body.alipayQrUrl()));
         putSecret("payment.alipay.private_key", body.alipayPrivateKey());
 
         putPlain("payment.wechat.app_id", body.wechatAppId());
         putPlain("payment.wechat.mch_id", body.wechatMchId());
         putPlain("payment.wechat.notify_url", body.wechatNotifyUrl());
-        putPlain("payment.wechat.qr_url", body.wechatQrUrl());
+        putPlain("payment.wechat.qr_url", normalizeQrValue(body.wechatQrUrl()));
         putSecret("payment.wechat.api_v3_key", body.wechatApiV3Key());
         return ApiResponse.ok(Map.of("updatedBy", admin.username(), "config", paymentGatewayService.readiness()));
     }
@@ -59,6 +60,24 @@ public class AdminPaymentConfigController {
         if (value != null && !value.isBlank()) {
             systemConfigService.putSecret(key, value, key);
         }
+    }
+
+    private String normalizeQrValue(String value) {
+        if (value == null || value.isBlank()) {
+            return value;
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() > 1_500_000) {
+            throw new BizException(42001, "收款码图片过大，请压缩到 1MB 以内");
+        }
+        boolean supported = trimmed.startsWith("data:image/")
+                || trimmed.startsWith("https://")
+                || trimmed.startsWith("http://")
+                || trimmed.startsWith("/uploads/");
+        if (!supported) {
+            throw new BizException(42002, "收款码格式不支持，请上传图片");
+        }
+        return trimmed;
     }
 
     public record PaymentConfigRequest(

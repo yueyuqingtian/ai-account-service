@@ -6,6 +6,7 @@ const filterProductId = ref(0);
 const status = ref('');
 const content = ref('');
 const message = ref('');
+const importErrors = ref([]);
 const editingId = ref(null);
 const form = reactive({
     productId: 0,
@@ -32,13 +33,16 @@ async function loadInventory() {
 }
 async function submit() {
     try {
+        importErrors.value = [];
         const res = await api.post('/admin/inventory/import', { productId: form.productId, content: content.value });
         message.value = `导入成功 ${res.data.success} 条，失败 ${res.data.errors.length} 条`;
+        importErrors.value = res.data.errors;
         content.value = '';
         await loadInventory();
     }
     catch (e) {
         message.value = e.message;
+        importErrors.value = [];
     }
 }
 function edit(item) {
@@ -228,6 +232,18 @@ if (__VLS_ctx.message) {
     });
     (__VLS_ctx.message);
 }
+if (__VLS_ctx.importErrors.length) {
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({
+        ...{ class: "error-list" },
+    });
+    __VLS_asFunctionalElement(__VLS_intrinsicElements.strong, __VLS_intrinsicElements.strong)({});
+    for (const [item] of __VLS_getVForSourceType((__VLS_ctx.importErrors))) {
+        __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({
+            key: (item),
+        });
+        (item);
+    }
+}
 __VLS_asFunctionalElement(__VLS_intrinsicElements.table, __VLS_intrinsicElements.table)({
     ...{ class: "table inventory-table" },
 });
@@ -308,6 +324,7 @@ for (const [item] of __VLS_getVForSourceType((__VLS_ctx.inventory))) {
 /** @type {__VLS_StyleScopedClasses['filter-panel']} */ ;
 /** @type {__VLS_StyleScopedClasses['mini-stats']} */ ;
 /** @type {__VLS_StyleScopedClasses['muted']} */ ;
+/** @type {__VLS_StyleScopedClasses['error-list']} */ ;
 /** @type {__VLS_StyleScopedClasses['table']} */ ;
 /** @type {__VLS_StyleScopedClasses['inventory-table']} */ ;
 /** @type {__VLS_StyleScopedClasses['status-pill']} */ ;
@@ -325,6 +342,7 @@ const __VLS_self = (await import('vue')).defineComponent({
             status: status,
             content: content,
             message: message,
+            importErrors: importErrors,
             editingId: editingId,
             form: form,
             availableCount: availableCount,

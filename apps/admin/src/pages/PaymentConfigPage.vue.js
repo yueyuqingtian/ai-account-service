@@ -43,16 +43,20 @@ async function uploadQr(event, channel) {
     const file = event.target.files?.[0];
     if (!file)
         return;
-    const formData = new FormData();
-    formData.append('file', file);
     try {
-        const res = await api.post('/admin/uploads/image', formData);
+        if (!file.type.startsWith('image/')) {
+            throw new Error('请上传图片文件');
+        }
+        if (file.size > 1024 * 1024) {
+            throw new Error('收款码图片不能超过 1MB');
+        }
+        const dataUrl = await readAsDataUrl(file);
         if (channel === 'alipay')
-            form.alipayQrUrl = res.data.url;
+            form.alipayQrUrl = dataUrl;
         else
-            form.wechatQrUrl = res.data.url;
+            form.wechatQrUrl = dataUrl;
         await save();
-        message.value = '收款码已上传';
+        message.value = '收款码已保存';
     }
     catch (e) {
         message.value = e.message;
@@ -61,6 +65,14 @@ async function uploadQr(event, channel) {
         ;
         event.target.value = '';
     }
+}
+function readAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new Error('图片读取失败'));
+        reader.readAsDataURL(file);
+    });
 }
 onMounted(load);
 debugger; /* PartiallyEnd: #3632/scriptSetup.vue */
