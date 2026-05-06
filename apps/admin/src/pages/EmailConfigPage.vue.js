@@ -4,22 +4,22 @@ const form = reactive({
     username: '',
     appPassword: '',
     host: 'imap.gmail.com',
-    imapProxyEnabled: true,
-    imapProxyUrl: 'http://127.0.0.1:7897',
+    imapProxyEnabled: false,
+    imapProxyUrl: '',
     smtpHost: 'smtp.gmail.com',
-    smtpProxyEnabled: true,
-    smtpProxyUrl: 'http://127.0.0.1:7897',
+    smtpProxyEnabled: false,
+    smtpProxyUrl: '',
     folder: 'INBOX'
 });
 const current = ref({});
 const message = ref('');
 const proxyText = computed(() => {
     const enabled = current.value.imapProxyEnabled === true || current.value.imapProxyEnabled === 'true';
-    return enabled ? (current.value.imapProxyUrl || 'http://127.0.0.1:7897') : '未启用';
+    return enabled ? (current.value.imapProxyUrl || '未配置') : '未启用';
 });
 const smtpProxyText = computed(() => {
     const enabled = current.value.smtpProxyEnabled === true || current.value.smtpProxyEnabled === 'true';
-    return enabled ? (current.value.smtpProxyUrl || current.value.imapProxyUrl || 'http://127.0.0.1:7897') : '未启用';
+    return enabled ? (current.value.smtpProxyUrl || '未配置') : '未启用';
 });
 async function load() {
     try {
@@ -28,10 +28,10 @@ async function load() {
         form.username = res.data.username || '';
         form.host = res.data.host || 'imap.gmail.com';
         form.imapProxyEnabled = res.data.imapProxyEnabled === true || res.data.imapProxyEnabled === 'true';
-        form.imapProxyUrl = res.data.imapProxyUrl || 'http://127.0.0.1:7897';
+        form.imapProxyUrl = res.data.imapProxyUrl || '';
         form.smtpHost = res.data.smtpHost || 'smtp.gmail.com';
         form.smtpProxyEnabled = res.data.smtpProxyEnabled === true || res.data.smtpProxyEnabled === 'true';
-        form.smtpProxyUrl = res.data.smtpProxyUrl || form.imapProxyUrl;
+        form.smtpProxyUrl = res.data.smtpProxyUrl || '';
         form.folder = res.data.folder || 'INBOX';
     }
     catch (e) {
@@ -84,7 +84,7 @@ __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
 (__VLS_ctx.form.imapProxyEnabled);
 __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
 __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-    placeholder: "IMAP 代理地址，默认 http://127.0.0.1:7897",
+    placeholder: "IMAP 代理地址，例如 socks5://host:port",
 });
 (__VLS_ctx.form.imapProxyUrl);
 __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
@@ -100,7 +100,7 @@ __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
 (__VLS_ctx.form.smtpProxyEnabled);
 __VLS_asFunctionalElement(__VLS_intrinsicElements.span, __VLS_intrinsicElements.span)({});
 __VLS_asFunctionalElement(__VLS_intrinsicElements.input)({
-    placeholder: "SMTP 代理地址，默认复用 IMAP 代理",
+    placeholder: "SMTP 代理地址，例如 socks5://host:port",
 });
 (__VLS_ctx.form.smtpProxyUrl);
 __VLS_asFunctionalElement(__VLS_intrinsicElements.p, __VLS_intrinsicElements.p)({

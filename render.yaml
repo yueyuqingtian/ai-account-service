@@ -33,6 +33,12 @@ services:
         value: admin
       - key: GPT_PLUS_ADMIN_PASSWORD
         sync: false
+      - key: GPT_PLUS_MAIL_PROVIDER
+        value: auto
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        sync: false
       - key: GPT_PLUS_CORS_WEB_ORIGIN
         fromService:
           type: web

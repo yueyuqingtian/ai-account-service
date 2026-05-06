@@ -1,15 +1,24 @@
 package com.company.gptplus.common;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.mail.Message;
 import jakarta.mail.PasswordAuthentication;
 import jakarta.mail.Session;
 import jakarta.mail.Transport;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 
 @Service
@@ -17,25 +26,65 @@ public class SmtpMailService {
     private static final String GMAIL_SMTP_PORT = "587";
 
     private final SystemConfigService systemConfigService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final String mailProvider;
+    private final String resendApiKey;
+    private final String resendFrom;
+    private final String smtpHostFallback;
+    private final String smtpPortFallback;
+    private final String smtpProxyEnabledFallback;
+    private final String smtpProxyUrlFallback;
 
-    public SmtpMailService(SystemConfigService systemConfigService) {
+    public SmtpMailService(SystemConfigService systemConfigService,
+                           @Value("${GPT_PLUS_MAIL_PROVIDER:auto}") String mailProvider,
+                           @Value("${RESEND_API_KEY:}") String resendApiKey,
+                           @Value("${RESEND_FROM:}") String resendFrom,
+                           @Value("${SMTP_HOST:smtp.gmail.com}") String smtpHostFallback,
+                           @Value("${SMTP_PORT:587}") String smtpPortFallback,
+                           @Value("${SMTP_PROXY_ENABLED:}") String smtpProxyEnabledFallback,
+                           @Value("${SMTP_PROXY_URL:}") String smtpProxyUrlFallback) {
         this.systemConfigService = systemConfigService;
+        this.mailProvider = mailProvider;
+        this.resendApiKey = resendApiKey;
+        this.resendFrom = resendFrom;
+        this.smtpHostFallback = smtpHostFallback;
+        this.smtpPortFallback = smtpPortFallback;
+        this.smtpProxyEnabledFallback = smtpProxyEnabledFallback;
+        this.smtpProxyUrlFallback = smtpProxyUrlFallback;
     }
 
     public boolean ready() {
+        return resendReady() || smtpReady();
+    }
+
+    public void sendRegisterCode(String to, String code) {
+        if (useResend()) {
+            sendRegisterCodeByResend(to, code);
+            return;
+        }
+        sendRegisterCodeBySmtp(to, code);
+    }
+
+    private boolean smtpReady() {
         return systemConfigService.getPlain("gmail.imap.username").filter(v -> !v.isBlank()).isPresent()
                 && systemConfigService.getSecret("gmail.imap.app_password").filter(v -> !v.isBlank()).isPresent();
     }
 
-    public void sendRegisterCode(String to, String code) {
+    private void sendRegisterCodeBySmtp(String to, String code) {
         String username = systemConfigService.getPlain("gmail.imap.username")
                 .map(String::trim)
                 .orElseThrow(() -> new BizException(10010, "后台尚未配置发信邮箱"));
         String appPassword = systemConfigService.getSecret("gmail.imap.app_password")
                 .map(value -> value.replaceAll("\\s+", ""))
                 .orElseThrow(() -> new BizException(10011, "后台尚未配置邮箱应用密钥"));
-        String smtpHost = systemConfigService.getPlain("gmail.smtp.host").map(String::trim).filter(v -> !v.isBlank()).orElse("smtp.gmail.com");
-        String smtpPort = GMAIL_SMTP_PORT;
+        String smtpHost = systemConfigService.getPlain("gmail.smtp.host")
+                .map(String::trim)
+                .filter(v -> !v.isBlank())
+                .orElse(smtpHostFallback == null || smtpHostFallback.isBlank() ? "smtp.gmail.com" : smtpHostFallback);
+        String smtpPort = systemConfigService.getPlain("gmail.smtp.port")
+                .map(String::trim)
+                .filter(v -> !v.isBlank())
+                .orElse(smtpPortFallback == null || smtpPortFallback.isBlank() ? GMAIL_SMTP_PORT : smtpPortFallback);
 
         try {
             Properties props = new Properties();
@@ -68,18 +117,51 @@ public class SmtpMailService {
         }
     }
 
+    private void sendRegisterCodeByResend(String to, String code) {
+        String apiKey = systemConfigService.getSecret("mail.resend.api_key")
+                .or(() -> notBlank(resendApiKey))
+                .orElseThrow(() -> new BizException(10014, "后台尚未配置 Resend API Key"));
+        String from = systemConfigService.getPlain("mail.resend.from")
+                .or(() -> notBlank(resendFrom))
+                .orElseThrow(() -> new BizException(10015, "后台尚未配置 Resend 发信地址"));
+        try {
+            String body = objectMapper.writeValueAsString(Map.of(
+                    "from", from,
+                    "to", List.of(to),
+                    "subject", "注册验证码",
+                    "text", "你的注册验证码是：" + code + "，10 分钟内有效。"
+            ));
+            HttpRequest request = HttpRequest.newBuilder(URI.create("https://api.resend.com/emails"))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(body))
+                    .build();
+            HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new BizException(10016, "验证码邮件发送失败：Resend 返回 " + response.statusCode());
+            }
+        } catch (BizException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BizException(10012, "验证码邮件发送失败：" + ex.getMessage());
+        }
+    }
+
     private void applyProxy(Properties props) {
         boolean enabled = Boolean.parseBoolean(systemConfigService.getPlain("gmail.smtp.proxy.enabled")
                 .or(() -> systemConfigService.getPlain("gmail.imap.proxy.enabled"))
-                .orElse("true"));
+                .or(() -> notBlank(smtpProxyEnabledFallback))
+                .orElse("false"));
         if (!enabled) {
             return;
         }
         String proxyUrl = systemConfigService.getPlain("gmail.smtp.proxy.url")
                 .or(() -> systemConfigService.getPlain("gmail.imap.proxy.url"))
+                .or(() -> notBlank(smtpProxyUrlFallback))
                 .map(String::trim)
                 .filter(v -> !v.isBlank())
-                .orElse("http://127.0.0.1:7897");
+                .orElseThrow(() -> new BizException(10013, "SMTP 代理已启用但未配置代理地址"));
         try {
             URI uri = proxyUrl.contains("://") ? URI.create(proxyUrl) : URI.create("http://" + proxyUrl);
             String host = uri.getHost();
@@ -103,8 +185,28 @@ public class SmtpMailService {
                     }
                 }
             }
+        } catch (BizException ex) {
+            throw ex;
         } catch (Exception ex) {
             throw new BizException(10013, "SMTP 代理地址格式错误：" + proxyUrl);
         }
+    }
+
+    private boolean useResend() {
+        String provider = systemConfigService.getPlain("mail.provider")
+                .or(() -> notBlank(mailProvider))
+                .orElse("auto")
+                .trim()
+                .toLowerCase(Locale.ROOT);
+        return "resend".equals(provider) || ("auto".equals(provider) && resendReady());
+    }
+
+    private boolean resendReady() {
+        return systemConfigService.getSecret("mail.resend.api_key").filter(v -> !v.isBlank()).isPresent()
+                || notBlank(resendApiKey).isPresent();
+    }
+
+    private Optional<String> notBlank(String value) {
+        return value == null || value.isBlank() ? Optional.empty() : Optional.of(value.trim());
     }
 }

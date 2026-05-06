@@ -33,14 +33,14 @@ public class AdminEmailConfigController {
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("username", username);
         detail.put("host", host);
-        detail.put("imapProxyEnabled", systemConfigService.getPlain("gmail.imap.proxy.enabled").orElse("true"));
-        detail.put("imapProxyUrl", systemConfigService.getPlain("gmail.imap.proxy.url").orElse("http://127.0.0.1:7897"));
+        detail.put("imapProxyEnabled", systemConfigService.getPlain("gmail.imap.proxy.enabled").orElse("false"));
+        detail.put("imapProxyUrl", systemConfigService.getPlain("gmail.imap.proxy.url").orElse(""));
         detail.put("smtpHost", systemConfigService.getPlain("gmail.smtp.host").orElse("smtp.gmail.com"));
         detail.put("smtpPort", "587");
         detail.put("smtpProxyEnabled", systemConfigService.getPlain("gmail.smtp.proxy.enabled")
-                .or(() -> systemConfigService.getPlain("gmail.imap.proxy.enabled")).orElse("true"));
+                .or(() -> systemConfigService.getPlain("gmail.imap.proxy.enabled")).orElse("false"));
         detail.put("smtpProxyUrl", systemConfigService.getPlain("gmail.smtp.proxy.url")
-                .or(() -> systemConfigService.getPlain("gmail.imap.proxy.url")).orElse("http://127.0.0.1:7897"));
+                .or(() -> systemConfigService.getPlain("gmail.imap.proxy.url")).orElse(""));
         detail.put("folder", folder);
         detail.put("hasAppPassword", hasAppPassword);
         detail.put("ready", !username.isBlank() && hasAppPassword);
@@ -52,13 +52,13 @@ public class AdminEmailConfigController {
         AuthSupport.CurrentUser admin = authSupport.requireAdmin(request);
         systemConfigService.putPlain("gmail.imap.username", body.username().trim(), "Gmail IMAP username");
         systemConfigService.putPlain("gmail.imap.host", body.host() == null || body.host().isBlank() ? "imap.gmail.com" : body.host(), "Gmail IMAP host");
-        systemConfigService.putPlain("gmail.imap.proxy.enabled", body.imapProxyEnabled() == null ? "true" : String.valueOf(body.imapProxyEnabled()), "Gmail IMAP proxy enabled");
-        systemConfigService.putPlain("gmail.imap.proxy.url", body.imapProxyUrl() == null || body.imapProxyUrl().isBlank() ? "http://127.0.0.1:7897" : body.imapProxyUrl().trim(), "Gmail IMAP proxy URL");
+        systemConfigService.putPlain("gmail.imap.proxy.enabled", body.imapProxyEnabled() == null ? "false" : String.valueOf(body.imapProxyEnabled()), "Gmail IMAP proxy enabled");
+        systemConfigService.putPlain("gmail.imap.proxy.url", body.imapProxyUrl() == null ? "" : body.imapProxyUrl().trim(), "Gmail IMAP proxy URL");
         systemConfigService.putPlain("gmail.smtp.host", body.smtpHost() == null || body.smtpHost().isBlank() ? "smtp.gmail.com" : body.smtpHost().trim(), "Gmail SMTP host");
         systemConfigService.putPlain("gmail.smtp.port", "587", "Gmail SMTP port");
-        systemConfigService.putPlain("gmail.smtp.proxy.enabled", body.smtpProxyEnabled() == null ? String.valueOf(body.imapProxyEnabled() == null || body.imapProxyEnabled()) : String.valueOf(body.smtpProxyEnabled()), "Gmail SMTP proxy enabled");
+        systemConfigService.putPlain("gmail.smtp.proxy.enabled", body.smtpProxyEnabled() == null ? "false" : String.valueOf(body.smtpProxyEnabled()), "Gmail SMTP proxy enabled");
         systemConfigService.putPlain("gmail.smtp.proxy.url", body.smtpProxyUrl() == null || body.smtpProxyUrl().isBlank()
-                ? (body.imapProxyUrl() == null || body.imapProxyUrl().isBlank() ? "http://127.0.0.1:7897" : body.imapProxyUrl().trim())
+                ? ""
                 : body.smtpProxyUrl().trim(), "Gmail SMTP proxy URL");
         systemConfigService.putPlain("gmail.imap.folder", body.folder() == null || body.folder().isBlank() ? "INBOX" : body.folder(), "Gmail IMAP folder");
         if (body.appPassword() != null && !body.appPassword().isBlank()) {

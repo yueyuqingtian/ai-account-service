@@ -9,14 +9,14 @@
         <input v-model="form.imapProxyEnabled" type="checkbox" />
         <span>启用 IMAP 代理</span>
       </label>
-      <input v-model.trim="form.imapProxyUrl" placeholder="IMAP 代理地址，默认 http://127.0.0.1:7897" />
+      <input v-model.trim="form.imapProxyUrl" placeholder="IMAP 代理地址，例如 socks5://host:port" />
       <input v-model.trim="form.smtpHost" placeholder="SMTP Host，默认 smtp.gmail.com" />
       <label class="check-row">
         <input v-model="form.smtpProxyEnabled" type="checkbox" />
         <span>启用 SMTP 代理</span>
       </label>
-      <input v-model.trim="form.smtpProxyUrl" placeholder="SMTP 代理地址，默认复用 IMAP 代理" />
-      <p class="hint">注册验证码邮件使用 Gmail SMTP 587 端口发信；OpenAI 验证码查询使用 IMAP 993 端口收信。两者都支持 HTTP/SOCKS 代理。</p>
+      <input v-model.trim="form.smtpProxyUrl" placeholder="SMTP 代理地址，例如 socks5://host:port" />
+      <p class="hint">注册邮件可用 Gmail SMTP，也可在线上通过 Render 环境变量配置 Resend 走 HTTPS 发信。</p>
       <input v-model.trim="form.folder" placeholder="邮件文件夹，默认 INBOX" />
       <button @click="save">保存配置</button>
     </div>
@@ -43,22 +43,22 @@ const form = reactive({
   username: '',
   appPassword: '',
   host: 'imap.gmail.com',
-  imapProxyEnabled: true,
-  imapProxyUrl: 'http://127.0.0.1:7897',
+  imapProxyEnabled: false,
+  imapProxyUrl: '',
   smtpHost: 'smtp.gmail.com',
-  smtpProxyEnabled: true,
-  smtpProxyUrl: 'http://127.0.0.1:7897',
+  smtpProxyEnabled: false,
+  smtpProxyUrl: '',
   folder: 'INBOX'
 })
 const current = ref<any>({})
 const message = ref('')
 const proxyText = computed(() => {
   const enabled = current.value.imapProxyEnabled === true || current.value.imapProxyEnabled === 'true'
-  return enabled ? (current.value.imapProxyUrl || 'http://127.0.0.1:7897') : '未启用'
+  return enabled ? (current.value.imapProxyUrl || '未配置') : '未启用'
 })
 const smtpProxyText = computed(() => {
   const enabled = current.value.smtpProxyEnabled === true || current.value.smtpProxyEnabled === 'true'
-  return enabled ? (current.value.smtpProxyUrl || current.value.imapProxyUrl || 'http://127.0.0.1:7897') : '未启用'
+  return enabled ? (current.value.smtpProxyUrl || '未配置') : '未启用'
 })
 
 async function load() {
@@ -68,10 +68,10 @@ async function load() {
     form.username = res.data.username || ''
     form.host = res.data.host || 'imap.gmail.com'
     form.imapProxyEnabled = res.data.imapProxyEnabled === true || res.data.imapProxyEnabled === 'true'
-    form.imapProxyUrl = res.data.imapProxyUrl || 'http://127.0.0.1:7897'
+    form.imapProxyUrl = res.data.imapProxyUrl || ''
     form.smtpHost = res.data.smtpHost || 'smtp.gmail.com'
     form.smtpProxyEnabled = res.data.smtpProxyEnabled === true || res.data.smtpProxyEnabled === 'true'
-    form.smtpProxyUrl = res.data.smtpProxyUrl || form.imapProxyUrl
+    form.smtpProxyUrl = res.data.smtpProxyUrl || ''
     form.folder = res.data.folder || 'INBOX'
   } catch (e: any) {
     message.value = e.message
