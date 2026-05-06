@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -47,9 +46,18 @@ public class AdminInventoryController {
     }
 
     @PostMapping("/import")
-    @Transactional
     public ApiResponse<?> importInventory(HttpServletRequest servletRequest, @Valid @RequestBody ImportRequest request) {
         AuthSupport.CurrentUser admin = authSupport.requireAdmin(servletRequest);
+        if (request.productId() == null || request.productId() <= 0) {
+            throw new BizException(41005, "请选择要导入的商品");
+        }
+        Integer productExists = jdbcTemplate.queryForObject("select count(*) from product where id = ? and status <> 'DELETED'", Integer.class, request.productId());
+        if (productExists == null || productExists == 0) {
+            throw new BizException(41006, "商品不存在或已删除");
+        }
+        if (request.content() == null || request.content().isBlank()) {
+            throw new BizException(41007, "请输入库存内容");
+        }
         String batchNo = Ids.batchNo();
         List<String> errors = new ArrayList<>();
         int success = 0;
@@ -59,19 +67,44 @@ public class AdminInventoryController {
             if (line.isBlank()) {
                 continue;
             }
-            String[] parts = line.split(",");
+            String[] parts = line.split(",", 3);
             if (parts.length < 2) {
                 errors.add("第 " + (i + 1) + " 行格式错误，应为 account,password[,remark]");
                 continue;
             }
+            String account = parts[0].trim();
+            String password = parts[1].trim();
+            String remark = parts.length > 2 ? parts[2].trim() : null;
+            if (account.isBlank() || password.isBlank()) {
+                errors.add("第 " + (i + 1) + " 行账号或密码不能为空");
+                continue;
+            }
+            if (account.length() > 255) {
+                errors.add("第 " + (i + 1) + " 行账号长度不能超过 255");
+                continue;
+            }
+            if (remark != null && remark.length() > 500) {
+                errors.add("第 " + (i + 1) + " 行备注长度不能超过 500");
+                continue;
+            }
             try {
-                jdbcTemplate.update("""
+                String passwordCipher = cryptoService.encrypt(password);
+                if (passwordCipher.length() > 512) {
+                    errors.add("第 " + (i + 1) + " 行密码过长");
+                    continue;
+                }
+                int inserted = jdbcTemplate.update("""
                         insert into inventory_account(batch_no, product_id, resource_account, resource_password_cipher, status, remark)
                         values (?, ?, ?, ?, 'AVAILABLE', ?)
-                        """, batchNo, request.productId(), parts[0].trim(), cryptoService.encrypt(parts[1].trim()), parts.length > 2 ? parts[2].trim() : null);
-                success++;
+                        on conflict (product_id, resource_account) do nothing
+                        """, batchNo, request.productId(), account, passwordCipher, remark);
+                if (inserted == 1) {
+                    success++;
+                } else {
+                    errors.add("第 " + (i + 1) + " 行导入失败：同一商品下账号已存在");
+                }
             } catch (Exception ex) {
-                errors.add("第 " + (i + 1) + " 行导入失败：" + ex.getMessage());
+                errors.add("第 " + (i + 1) + " 行导入失败，请检查账号、密码和备注格式");
             }
         }
         jdbcTemplate.update("insert into admin_operation_log(admin_id, module, operation_type, target_id, after_json) values (?, 'INVENTORY', 'IMPORT', ?, ?)",

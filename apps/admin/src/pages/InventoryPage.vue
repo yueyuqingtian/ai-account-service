@@ -55,6 +55,10 @@
     </div>
 
     <p v-if="message" class="muted">{{ message }}</p>
+    <div v-if="importErrors.length" class="error-list">
+      <strong>失败明细</strong>
+      <span v-for="item in importErrors" :key="item">{{ item }}</span>
+    </div>
     <table class="table inventory-table">
       <thead>
         <tr>
@@ -91,6 +95,7 @@ const filterProductId = ref(0)
 const status = ref('')
 const content = ref('')
 const message = ref('')
+const importErrors = ref<string[]>([])
 const editingId = ref<number | null>(null)
 const form = reactive({
   productId: 0,
@@ -118,12 +123,15 @@ async function loadInventory() {
 
 async function submit() {
   try {
+    importErrors.value = []
     const res: any = await api.post('/admin/inventory/import', { productId: form.productId, content: content.value })
     message.value = `导入成功 ${res.data.success} 条，失败 ${res.data.errors.length} 条`
+    importErrors.value = res.data.errors
     content.value = ''
     await loadInventory()
   } catch (e: any) {
     message.value = e.message
+    importErrors.value = []
   }
 }
 
@@ -228,6 +236,17 @@ onMounted(load)
 
 .inventory-table {
   margin-top: 16px;
+}
+
+.error-list {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 16px;
+  border: 1px solid #fecdd3;
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #be123c;
+  padding: 12px;
 }
 
 @media (max-width: 980px) {
