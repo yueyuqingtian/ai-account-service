@@ -28,7 +28,7 @@ class SmtpMailServiceTests {
         configService.putPlain("gmail.smtp.proxy.enabled", "true", "SMTP proxy enabled");
         configService.putPlain("gmail.smtp.proxy.url", "http://127.0.0.1", "bad SMTP proxy");
 
-        SmtpMailService service = new SmtpMailService(configService, "smtp", "", "", "smtp.gmail.com", "587", "", "");
+        SmtpMailService service = new SmtpMailService(configService, "smtp", "", "", "smtp.gmail.com", "587", "", "", "");
 
         assertThatThrownBy(() -> service.sendRegisterCode("to@example.com", "123456"))
                 .isInstanceOf(BizException.class)

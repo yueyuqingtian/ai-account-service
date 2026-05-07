@@ -34,6 +34,7 @@ public class SmtpMailService {
     private final String smtpPortFallback;
     private final String smtpProxyEnabledFallback;
     private final String smtpProxyUrlFallback;
+    private final String renderEnvironment;
 
     public SmtpMailService(SystemConfigService systemConfigService,
                            @Value("${GPT_PLUS_MAIL_PROVIDER:auto}") String mailProvider,
@@ -42,7 +43,8 @@ public class SmtpMailService {
                            @Value("${SMTP_HOST:smtp.gmail.com}") String smtpHostFallback,
                            @Value("${SMTP_PORT:587}") String smtpPortFallback,
                            @Value("${SMTP_PROXY_ENABLED:}") String smtpProxyEnabledFallback,
-                           @Value("${SMTP_PROXY_URL:}") String smtpProxyUrlFallback) {
+                           @Value("${SMTP_PROXY_URL:}") String smtpProxyUrlFallback,
+                           @Value("${RENDER:}") String renderEnvironment) {
         this.systemConfigService = systemConfigService;
         this.mailProvider = mailProvider;
         this.resendApiKey = resendApiKey;
@@ -51,6 +53,7 @@ public class SmtpMailService {
         this.smtpPortFallback = smtpPortFallback;
         this.smtpProxyEnabledFallback = smtpProxyEnabledFallback;
         this.smtpProxyUrlFallback = smtpProxyUrlFallback;
+        this.renderEnvironment = renderEnvironment;
     }
 
     public boolean ready() {
@@ -198,7 +201,20 @@ public class SmtpMailService {
                 .orElse("auto")
                 .trim()
                 .toLowerCase(Locale.ROOT);
-        return "resend".equals(provider) || ("auto".equals(provider) && resendReady());
+        if ("resend".equals(provider)) {
+            return true;
+        }
+        if ("smtp".equals(provider)) {
+            return false;
+        }
+        return "auto".equals(provider) && (resendReady() || runningOnRender());
+    }
+
+    private boolean runningOnRender() {
+        return notBlank(renderEnvironment).isPresent()
+                || notBlank(System.getenv("RENDER")).isPresent()
+                || notBlank(System.getenv("RENDER_SERVICE_ID")).isPresent()
+                || notBlank(System.getenv("RENDER_EXTERNAL_URL")).isPresent();
     }
 
     private boolean resendReady() {

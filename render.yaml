@@ -34,7 +34,7 @@ services:
       - key: GPT_PLUS_ADMIN_PASSWORD
         sync: false
       - key: GPT_PLUS_MAIL_PROVIDER
-        value: auto
+        value: resend
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM
